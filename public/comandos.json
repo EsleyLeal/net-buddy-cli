@@ -1,0 +1,184 @@
+[
+  {
+    "comando": "show ip bgp",
+    "dispositivo": "Cisco",
+    "protocolo": "BGP",
+    "tarefa": "Verificar BGP",
+    "descricao": "Exibe tabela BGP, útil para troubleshooting de routing."
+  },
+  {
+    "comando": "display bgp peer",
+    "dispositivo": "Huawei",
+    "protocolo": "BGP",
+    "tarefa": "Verificar Peers",
+    "descricao": "Mostra status dos peers BGP"
+  },
+  {
+    "comando": "show mpls ldp neighbor",
+    "dispositivo": "Cisco",
+    "protocolo": "MPLS",
+    "tarefa": "Verificar LDP",
+    "descricao": "Lista neighbors LDP ativos"
+  },
+  {
+    "comando": "display mpls ldp session",
+    "dispositivo": "Huawei",
+    "protocolo": "MPLS",
+    "tarefa": "Verificar LDP",
+    "descricao": "Exibe sessões LDP estabelecidas"
+  },
+  {
+    "comando": "show l2vpn atom vc",
+    "dispositivo": "Cisco",
+    "protocolo": "VPWS",
+    "tarefa": "Verificar VPWS",
+    "descricao": "Status dos Virtual Circuits VPWS"
+  },
+  {
+    "comando": "display l2vpn pw",
+    "dispositivo": "Huawei",
+    "protocolo": "VPWS",
+    "tarefa": "Verificar VPWS",
+    "descricao": "Estado dos pseudowires L2VPN"
+  },
+  {
+    "comando": "show bridge-domain",
+    "dispositivo": "Cisco",
+    "protocolo": "VPLS",
+    "tarefa": "Verificar VPLS",
+    "descricao": "Informações do bridge domain VPLS"
+  },
+  {
+    "comando": "display vsi",
+    "dispositivo": "Huawei",
+    "protocolo": "VPLS",
+    "tarefa": "Verificar VPLS",
+    "descricao": "Virtual Switch Instance details"
+  },
+  {
+    "comando": "show ip ospf neighbor",
+    "dispositivo": "Cisco",
+    "protocolo": "OSPF",
+    "tarefa": "Verificar OSPF",
+    "descricao": "Lista adjacências OSPF"
+  },
+  {
+    "comando": "display ospf peer",
+    "dispositivo": "Huawei",
+    "protocolo": "OSPF",
+    "tarefa": "Verificar OSPF",
+    "descricao": "Status dos peers OSPF"
+  },
+  {
+    "comando": "show interface status",
+    "dispositivo": "Cisco",
+    "protocolo": "Interface",
+    "tarefa": "Status Interface",
+    "descricao": "Estado de todas as interfaces"
+  },
+  {
+    "comando": "display interface brief",
+    "dispositivo": "Huawei",
+    "protocolo": "Interface",
+    "tarefa": "Status Interface",
+    "descricao": "Resumo do status das interfaces"
+  },
+  {
+    "comando": "show cdp neighbors",
+    "dispositivo": "Cisco",
+    "protocolo": "CDP",
+    "tarefa": "Descoberta",
+    "descricao": "Dispositivos vizinhos via CDP"
+  },
+  {
+    "comando": "display lldp neighbor",
+    "dispositivo": "Huawei",
+    "protocolo": "LLDP",
+    "tarefa": "Descoberta",
+    "descricao": "Neighbors descobertos via LLDP"
+  },
+  {
+    "comando": "show log",
+    "dispositivo": "Cisco",
+    "protocolo": "Sistema",
+    "tarefa": "Debug",
+    "descricao": "Visualizar logs do sistema"
+  },
+  {
+    "comando": "display logbuffer",
+    "dispositivo": "Huawei",
+    "protocolo": "Sistema",
+    "tarefa": "Debug",
+    "descricao": "Buffer de logs do equipamento"
+  },
+  {
+    "comando": "ping mpls l2vpn vcid",
+    "dispositivo": "Cisco",
+    "protocolo": "MPLS",
+    "tarefa": "Teste Conectividade",
+    "descricao": "Teste de conectividade L2VPN"
+  },
+  {
+    "comando": "ping -a vpn-instance",
+    "dispositivo": "Huawei",
+    "protocolo": "MPLS",
+    "tarefa": "Teste Conectividade",
+    "descricao": "Ping dentro de VPN instance"
+  },
+  {
+    "comando": "show version",
+    "dispositivo": "Cisco",
+    "protocolo": "Sistema",
+    "tarefa": "Informações Sistema",
+    "descricao": "Versão do software e hardware"
+  },
+  {
+    "comando": "display version",
+    "dispositivo": "Huawei",
+    "protocolo": "Sistema",
+    "tarefa": "Informações Sistema",
+    "descricao": "Informações de versão do sistema"
+  },
+  {
+    "comando": "show ip cef",
+    "dispositivo": "Cisco",
+    "protocolo": "CEF",
+    "tarefa": "Verificar Forwarding",
+    "descricao": "Cisco Express Forwarding table"
+  },
+  {
+    "comando": "display fib",
+    "dispositivo": "Huawei",
+    "protocolo": "FIB",
+    "tarefa": "Verificar Forwarding",
+    "descricao": "Forwarding Information Base"
+  },
+  {
+    "comando": "show mpls forwarding-table",
+    "dispositivo": "Cisco",
+    "protocolo": "MPLS",
+    "tarefa": "MPLS Labels",
+    "descricao": "Tabela de forwarding MPLS"
+  },
+  {
+    "comando": "display mpls lsp",
+    "dispositivo": "Huawei",
+    "protocolo": "MPLS",
+    "tarefa": "MPLS Labels",
+    "descricao": "Label Switched Paths ativos"
+  },
+  {
+    "comando": "show ethernet cfm maintenance-points",
+    "dispositivo": "Cisco",
+    "protocolo": "CFM",
+    "tarefa": "OAM Ethernet",
+    "descricao": "Connectivity Fault Management"
+  },
+  {
+    "comando": "display cfm mp",
+    "dispositivo": "Huawei",
+    "protocolo": "CFM",
+    "tarefa": "OAM Ethernet",
+    "descricao": "Maintenance Points CFM"
+  }
+]
