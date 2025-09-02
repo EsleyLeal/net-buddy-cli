@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { Menu, X, Terminal, Search, Network, FileText, Wrench } from 'lucide-react';
+import { Menu, X, Terminal, Search, Network, FileText, Wrench, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const Layout = () => {
@@ -9,8 +9,9 @@ const Layout = () => {
   const navigation = [
     { name: 'Comandos', href: '/', icon: Search },
     { name: 'Circuitos', href: '/circuitos', icon: Network },
-    { name: 'Notas', href: '/notas', icon: FileText },
+    { name: 'Chamados Tratados', href: '/notas', icon: FileText },
     { name: 'Troubleshooting', href: '/troubleshooting', icon: Wrench },
+    { name: 'Backup', href: '/backup', icon: Database },
   ];
 
   return (

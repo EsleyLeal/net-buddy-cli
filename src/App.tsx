@@ -8,6 +8,7 @@ import CommandSearch from "./components/CommandSearch";
 import CircuitManager from "./components/CircuitManager";
 import NotesManager from "./components/NotesManager";
 import TroubleshootingGuide from "./components/TroubleshootingGuide";
+import BackupManager from "./components/BackupManager";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
             <Route path="circuitos" element={<CircuitManager />} />
             <Route path="notas" element={<NotesManager />} />
             <Route path="troubleshooting" element={<TroubleshootingGuide />} />
+            <Route path="backup" element={<BackupManager />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

@@ -1,260 +1,135 @@
-import { useState } from 'react';
-import { ChevronDown, ChevronRight, Wrench, AlertTriangle, CheckCircle, Terminal } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { AlertTriangle, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 
-interface TroubleshootStep {
-  comando?: string;
-  descricao: string;
-  esperado?: string;
-}
-
-interface TroubleshootItem {
+interface TroubleshootingItem {
   id: string;
   titulo: string;
-  categoria: string;
-  severidade: 'alta' | 'media' | 'baixa';
   descricao: string;
-  sintomas: string[];
-  passos: TroubleshootStep[];
-  equipamentos: string[];
+  passos: string[];
+  isCustom?: boolean;
 }
 
-const troubleshootData: TroubleshootItem[] = [
+const defaultTroubleshoot: TroubleshootingItem[] = [
   {
-    id: 'l2vc-down',
+    id: '1',
     titulo: 'L2VC Down',
-    categoria: 'MPLS',
-    severidade: 'alta',
-    descricao: 'Virtual Circuit L2VPN em estado down, afetando conectividade entre sites.',
-    sintomas: [
-      'Status do VC mostra "DOWN"',
-      'Perda de conectividade entre sites',
-      'Pacotes não atravessam o túnel MPLS'
-    ],
+    descricao: 'Circuito L2VPN não está operacional',
     passos: [
-      {
-        comando: 'show l2vpn atom vc',
-        descricao: 'Verificar status geral dos VCs',
-        esperado: 'VC deve estar UP/UP'
-      },
-      {
-        comando: 'show mpls ldp neighbor',
-        descricao: 'Confirmar sessões LDP ativas',
-        esperado: 'Estado "Oper" para neighbors'
-      },
-      {
-        comando: 'ping mpls l2vpn vcid [VC-ID]',
-        descricao: 'Testar conectividade end-to-end do VC'
-      },
-      {
-        comando: 'show interface [interface]',
-        descricao: 'Verificar status da interface física',
-        esperado: 'Interface UP/UP'
-      },
-      {
-        descricao: 'Verificar configuração de encapsulamento em ambos os lados'
-      },
-      {
-        descricao: 'Confirmar VC-ID e endereços IP de peers'
-      }
-    ],
-    equipamentos: ['Cisco', 'Huawei']
+      'Verificar status das interfaces físicas',
+      'show mpls l2transport vc',
+      'show xconnect all',
+      'Verificar configuração de VC-ID',
+      'Testar conectividade IP entre PEs'
+    ]
   },
   {
-    id: 'vlan-mismatch',
-    titulo: 'Mismatch de VLAN',
-    categoria: 'L2',
-    severidade: 'media',
-    descricao: 'Incompatibilidade de VLANs entre equipamentos ou interfaces.',
-    sintomas: [
-      'Conectividade intermitente',
-      'Alguns hosts não comunicam',
-      'Logs de VLAN mismatch'
-    ],
+    id: '2',
+    titulo: 'BGP Peer Down',
+    descricao: 'Sessão BGP não estabelece ou cai constantemente',  
     passos: [
-      {
-        comando: 'show vlan',
-        descricao: 'Listar VLANs configuradas',
-        esperado: 'VLAN deve existir e estar ativa'
-      },
-      {
-        comando: 'show interface trunk',
-        descricao: 'Verificar VLANs permitidas no trunk'
-      },
-      {
-        comando: 'show interface [interface] switchport',
-        descricao: 'Confirmar modo da interface (access/trunk)'
-      },
-      {
-        descricao: 'Verificar configuração de VLAN em ambos os lados'
-      },
-      {
-        descricao: 'Confirmar encapsulamento dot1q se necessário'
-      }
-    ],
-    equipamentos: ['Cisco', 'Huawei', 'Datacom']
+      'show ip bgp summary',
+      'show ip bgp neighbors [IP]',
+      'Verificar conectividade IP',
+      'Validar AS numbers',
+      'Checar filtros route-map'
+    ]
   },
   {
-    id: 'bgp-peer-idle',
-    titulo: 'Peer BGP Idle',
-    categoria: 'BGP',
-    severidade: 'alta',
-    descricao: 'Peer BGP não estabelece sessão, permanecendo em estado Idle.',
-    sintomas: [
-      'Estado BGP mostra "Idle"',
-      'Rotas não são recebidas/anunciadas',
-      'Conectividade de routing afetada'
-    ],
+    id: '3',
+    titulo: 'OSPF Adjacency Failed',
+    descricao: 'Adjacência OSPF não forma entre vizinhos',
     passos: [
-      {
-        comando: 'show ip bgp summary',
-        descricao: 'Verificar status geral dos peers BGP',
-        esperado: 'Estado "Established" para peers ativos'
-      },
-      {
-        comando: 'show ip bgp neighbors [IP]',
-        descricao: 'Detalhes específicos do peer problemático'
-      },
-      {
-        comando: 'ping [IP-do-peer]',
-        descricao: 'Testar conectividade IP básica',
-        esperado: 'Ping deve funcionar'
-      },
-      {
-        comando: 'telnet [IP-do-peer] 179',
-        descricao: 'Verificar porta BGP (179) acessível'
-      },
-      {
-        descricao: 'Verificar AS number configurado'
-      },
-      {
-        descricao: 'Confirmar source interface/endereço'
-      },
-      {
-        descricao: 'Verificar filtros de rota aplicados'
-      }
-    ],
-    equipamentos: ['Cisco', 'Huawei']
-  },
-  {
-    id: 'encap-failure',
-    titulo: 'Falha de Encapsulamento',
-    categoria: 'L2VPN',
-    severidade: 'media',
-    descricao: 'Problemas com encapsulamento de frames em túneis L2VPN.',
-    sintomas: [
-      'Pacotes não são encapsulados corretamente',
-      'Contadores de erro aumentando',
-      'Conectividade L2 intermitente'
-    ],
-    passos: [
-      {
-        comando: 'show l2vpn atom vc detail',
-        descricao: 'Verificar detalhes do encapsulamento VC'
-      },
-      {
-        comando: 'show mpls forwarding-table',
-        descricao: 'Confirmar labels MPLS corretos'
-      },
-      {
-        comando: 'show interface [interface] | include errors',
-        descricao: 'Verificar contadores de erro da interface'
-      },
-      {
-        descricao: 'Verificar MTU configurado em ambos os lados'
-      },
-      {
-        descricao: 'Confirmar tipo de encapsulamento (ethernet, vlan, etc.)'
-      },
-      {
-        descricao: 'Verificar controle de palavra (control word)'
-      }
-    ],
-    equipamentos: ['Cisco', 'Huawei']
-  },
-  {
-    id: 'mpls-label-issue',
-    titulo: 'Problema de Labels MPLS',
-    categoria: 'MPLS',
-    severidade: 'alta',
-    descricao: 'Labels MPLS incorretos ou não distribuídos adequadamente.',
-    sintomas: [
-      'LSPs não funcionam corretamente',
-      'Pacotes MPLS são descartados',
-      'Conectividade MPLS falha'
-    ],
-    passos: [
-      {
-        comando: 'show mpls ldp bindings',
-        descricao: 'Verificar distribuição de labels LDP'
-      },
-      {
-        comando: 'show mpls forwarding-table',
-        descricao: 'Confirmar entradas na tabela MPLS'
-      },
-      {
-        comando: 'show mpls ldp discovery',
-        descricao: 'Verificar descoberta de neighbors LDP'
-      },
-      {
-        comando: 'show ip cef [destino]',
-        descricao: 'Confirmar resolução CEF para destino'
-      },
-      {
-        descricao: 'Verificar configuração de LDP em interfaces'
-      },
-      {
-        descricao: 'Confirmar router-id LDP único'
-      }
-    ],
-    equipamentos: ['Cisco', 'Huawei']
-  },
-  {
-    id: 'ospf-neighbor-down',
-    titulo: 'OSPF Neighbor Down',
-    categoria: 'OSPF',
-    severidade: 'media',
-    descricao: 'Adjacência OSPF não se estabelece ou cai constantemente.',
-    sintomas: [
-      'Estado OSPF não chega a "Full"',
-      'LSAs não são sincronizados',
-      'Rotas OSPF ausentes'
-    ],
-    passos: [
-      {
-        comando: 'show ip ospf neighbor',
-        descricao: 'Verificar estado das adjacências',
-        esperado: 'Estado "Full" para neighbors'
-      },
-      {
-        comando: 'show ip ospf interface',
-        descricao: 'Confirmar configuração OSPF da interface'
-      },
-      {
-        comando: 'show ip ospf database',
-        descricao: 'Verificar base de dados OSPF'
-      },
-      {
-        descricao: 'Verificar área OSPF configurada'
-      },
-      {
-        descricao: 'Confirmar hello/dead timers compatíveis'
-      },
-      {
-        descricao: 'Verificar autenticação OSPF se configurada'
-      },
-      {
-        descricao: 'Confirmar MTU da interface'
-      }
-    ],
-    equipamentos: ['Cisco', 'Huawei']
+      'show ip ospf neighbor',
+      'show ip ospf interface',
+      'Verificar area-id',
+      'Validar hello/dead timers',
+      'Checar autenticação OSPF'
+    ]
   }
 ];
 
 const TroubleshootingGuide = () => {
+  const [troubleshoots, setTroubleshoots] = useState<TroubleshootingItem[]>([]);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({
+    titulo: '',
+    descricao: '',
+    passos: ''
+  });
+  const { toast } = useToast();
+
+  useEffect(() => {
+    loadTroubleshoots();
+  }, []);
+
+  const loadTroubleshoots = () => {
+    const customTroubleshoots = localStorage.getItem('noc-troubleshoots');
+    const customData = customTroubleshoots ? JSON.parse(customTroubleshoots) : [];
+    setTroubleshoots([...defaultTroubleshoot, ...customData]);
+  };
+
+  const addTroubleshoot = () => {
+    if (!formData.titulo || !formData.descricao || !formData.passos) {
+      toast({
+        title: "Erro",
+        description: "Todos os campos são obrigatórios",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newTroubleshoot: TroubleshootingItem = {
+      id: Date.now().toString(),
+      titulo: formData.titulo,
+      descricao: formData.descricao,
+      passos: formData.passos.split('\n').filter(step => step.trim()),
+      isCustom: true
+    };
+
+    const customTroubleshoots = localStorage.getItem('noc-troubleshoots');
+    const currentCustom = customTroubleshoots ? JSON.parse(customTroubleshoots) : [];
+    const newCustom = [...currentCustom, newTroubleshoot];
+    
+    localStorage.setItem('noc-troubleshoots', JSON.stringify(newCustom));
+    setTroubleshoots([...troubleshoots, newTroubleshoot]);
+
+    setFormData({ titulo: '', descricao: '', passos: '' });
+    setShowForm(false);
+
+    toast({
+      title: "Troubleshooting adicionado",
+      description: formData.titulo,
+    });
+  };
+
+  const deleteTroubleshoot = (id: string) => {
+    const itemToDelete = troubleshoots.find(item => item.id === id);
+    if (!itemToDelete?.isCustom) {
+      toast({
+        title: "Erro",
+        description: "Não é possível excluir itens padrão",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const updatedTroubleshoots = troubleshoots.filter(item => item.id !== id);
+    const customOnly = updatedTroubleshoots.filter(item => item.isCustom);
+    
+    localStorage.setItem('noc-troubleshoots', JSON.stringify(customOnly));
+    setTroubleshoots(updatedTroubleshoots);
+
+    toast({
+      title: "Troubleshooting removido",
+      description: "Item excluído com sucesso",
+    });
+  };
 
   const toggleExpanded = (id: string) => {
     const newExpanded = new Set(expandedItems);
@@ -266,177 +141,162 @@ const TroubleshootingGuide = () => {
     setExpandedItems(newExpanded);
   };
 
-  const getSeverityColor = (severidade: string) => {
-    switch (severidade) {
-      case 'alta': return 'bg-red-500/20 text-red-300';
-      case 'media': return 'bg-yellow-500/20 text-yellow-300';
-      case 'baixa': return 'bg-green-500/20 text-green-300';
-      default: return 'bg-gray-500/20 text-gray-300';
-    }
-  };
-
-  const getSeverityIcon = (severidade: string) => {
-    switch (severidade) {
-      case 'alta': return <AlertTriangle className="h-4 w-4" />;
-      case 'media': return <Wrench className="h-4 w-4" />;
-      case 'baixa': return <CheckCircle className="h-4 w-4" />;
-      default: return <Wrench className="h-4 w-4" />;
-    }
-  };
-
-  const categories = ['all', ...new Set(troubleshootData.map(item => item.categoria))];
-  
-  const filteredData = selectedCategory === 'all' 
-    ? troubleshootData 
-    : troubleshootData.filter(item => item.categoria === selectedCategory);
-
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-primary flex items-center">
-          <Wrench className="h-8 w-8 mr-3" />
-          Guia de Troubleshooting
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Soluções para problemas comuns em redes NOC N2
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-primary flex items-center">
+            <AlertTriangle className="h-8 w-8 mr-3" />
+            Guia de Troubleshooting
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Soluções para problemas comuns em redes
+          </p>
+        </div>
+        <Button onClick={() => setShowForm(!showForm)} className="terminal-button">
+          <Plus className="h-4 w-4 mr-2" />
+          Novo Troubleshoot
+        </Button>
       </div>
 
-      {/* Category Filter */}
-      <div className="flex flex-wrap gap-2">
-        {categories.map(category => (
-          <Button
-            key={category}
-            variant={selectedCategory === category ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSelectedCategory(category)}
-            className="terminal-button"
-          >
-            {category === 'all' ? 'Todas' : category}
-          </Button>
-        ))}
-      </div>
+      {/* Form */}
+      {showForm && (
+        <div className="terminal-card p-6">
+          <h3 className="text-lg font-semibold text-primary mb-4">Adicionar Troubleshooting</h3>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="titulo">Título do Problema *</Label>
+              <Input
+                id="titulo"
+                value={formData.titulo}
+                onChange={(e) => setFormData({...formData, titulo: e.target.value})}
+                className="terminal-input"
+                placeholder="Ex: Interface Down, Routing Loop"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="descricao">Descrição *</Label>
+              <Input
+                id="descricao"
+                value={formData.descricao}
+                onChange={(e) => setFormData({...formData, descricao: e.target.value})}
+                className="terminal-input"
+                placeholder="Breve descrição do problema"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="passos">Passos de Solução *</Label>
+              <Textarea
+                id="passos"
+                value={formData.passos}
+                onChange={(e) => setFormData({...formData, passos: e.target.value})}
+                className="terminal-input"
+                placeholder="Digite cada passo em uma linha separada..."
+                rows={6}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Cada linha será um passo da solução
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-2 mt-6">
+            <Button variant="outline" onClick={() => setShowForm(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={addTroubleshoot} className="terminal-button">
+              Adicionar
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div className="terminal-card p-4 text-center">
-          <div className="text-2xl font-bold text-primary">{filteredData.length}</div>
-          <div className="text-muted-foreground text-sm">Problemas</div>
-        </div>
-        <div className="terminal-card p-4 text-center">
-          <div className="text-2xl font-bold text-red-300">
-            {filteredData.filter(item => item.severidade === 'alta').length}
-          </div>
-          <div className="text-muted-foreground text-sm">Alta Severidade</div>
-        </div>
-        <div className="terminal-card p-4 text-center">
-          <div className="text-2xl font-bold text-yellow-300">
-            {filteredData.filter(item => item.severidade === 'media').length}
-          </div>
-          <div className="text-muted-foreground text-sm">Média Severidade</div>
+          <div className="text-2xl font-bold text-primary">{troubleshoots.length}</div>
+          <div className="text-muted-foreground text-sm">Total de Guias</div>
         </div>
         <div className="terminal-card p-4 text-center">
           <div className="text-2xl font-bold text-accent">
-            {new Set(filteredData.map(item => item.categoria)).size}
+            {troubleshoots.filter(t => t.isCustom).length}
           </div>
-          <div className="text-muted-foreground text-sm">Categorias</div>
+          <div className="text-muted-foreground text-sm">Personalizados</div>
+        </div>
+        <div className="terminal-card p-4 text-center">
+          <div className="text-2xl font-bold text-green-300">
+            {defaultTroubleshoot.length}
+          </div>
+          <div className="text-muted-foreground text-sm">Padrão</div>
         </div>
       </div>
 
-      {/* Troubleshooting Items */}
+      {/* Troubleshooting List */}
       <div className="space-y-4">
-        {filteredData.map((item) => (
+        {troubleshoots.map((item) => (
           <div key={item.id} className="terminal-card">
             <div 
-              className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/10"
+              className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/10 transition-colors"
               onClick={() => toggleExpanded(item.id)}
             >
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  {expandedItems.has(item.id) ? (
-                    <ChevronDown className="h-5 w-5 text-primary" />
-                  ) : (
-                    <ChevronRight className="h-5 w-5 text-primary" />
-                  )}
-                  {getSeverityIcon(item.severidade)}
-                </div>
-                
-                <div>
+              <div className="flex-1">
+                <div className="flex items-center space-x-3">
                   <h3 className="font-semibold text-primary text-lg">
                     {item.titulo}
                   </h3>
-                  <p className="text-muted-foreground text-sm">
-                    {item.descricao}
-                  </p>
+                  {item.isCustom && (
+                    <span className="text-xs bg-accent/20 text-accent px-2 py-1 rounded">
+                      Personalizado
+                    </span>
+                  )}
                 </div>
+                <p className="text-muted-foreground text-sm mt-1">
+                  {item.descricao}
+                </p>
               </div>
-
+              
               <div className="flex items-center space-x-2">
-                <Badge variant="outline">{item.categoria}</Badge>
-                <Badge className={getSeverityColor(item.severidade)}>
-                  {item.severidade.toUpperCase()}
-                </Badge>
+                {item.isCustom && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteTroubleshoot(item.id);
+                    }}
+                    className="p-1 h-auto text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+                {expandedItems.has(item.id) ? (
+                  <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                )}
               </div>
             </div>
 
             {expandedItems.has(item.id) && (
-              <div className="border-t border-border p-4 space-y-4">
-                {/* Sintomas */}
-                <div>
-                  <h4 className="font-semibold text-primary mb-2">Sintomas Comuns:</h4>
-                  <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                    {item.sintomas.map((sintoma, index) => (
-                      <li key={index}>{sintoma}</li>
+              <div className="px-4 pb-4 border-t border-muted/20">
+                <div className="pt-4">
+                  <h4 className="font-medium text-primary mb-3">Passos para Solução:</h4>
+                  <ol className="space-y-2">
+                    {item.passos.map((step, index) => (
+                      <li key={index} className="flex items-start">
+                        <span className="inline-flex items-center justify-center w-6 h-6 bg-primary/20 text-primary rounded-full text-sm font-medium mr-3 mt-0.5 flex-shrink-0">
+                          {index + 1}
+                        </span>
+                        <span className="text-card-foreground font-mono text-sm">
+                          {step}
+                        </span>
+                      </li>
                     ))}
-                  </ul>
-                </div>
-
-                {/* Equipamentos */}
-                <div>
-                  <h4 className="font-semibold text-primary mb-2">Equipamentos:</h4>
-                  <div className="flex space-x-2">
-                    {item.equipamentos.map(equip => (
-                      <Badge key={equip} variant="outline">{equip}</Badge>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Passos de Troubleshooting */}
-                <div>
-                  <h4 className="font-semibold text-primary mb-3">Passos de Troubleshooting:</h4>
-                  <div className="space-y-3">
-                    {item.passos.map((passo, index) => (
-                      <div key={index} className="bg-muted/20 rounded p-3 border-l-4 border-accent">
-                        <div className="flex items-start space-x-3">
-                          <div className="bg-accent text-accent-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
-                            {index + 1}
-                          </div>
-                          <div className="flex-1">
-                            {passo.comando && (
-                              <div className="mb-2">
-                                <div className="flex items-center space-x-2 mb-1">
-                                  <Terminal className="h-4 w-4 text-primary" />
-                                  <span className="text-primary font-semibold">Comando:</span>
-                                </div>
-                                <code className="bg-card text-primary font-mono text-sm px-2 py-1 rounded">
-                                  {passo.comando}
-                                </code>
-                              </div>
-                            )}
-                            <p className="text-card-foreground text-sm mb-2">
-                              {passo.descricao}
-                            </p>
-                            {passo.esperado && (
-                              <p className="text-green-300 text-sm">
-                                <strong>Esperado:</strong> {passo.esperado}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  </ol>
                 </div>
               </div>
             )}
@@ -444,11 +304,11 @@ const TroubleshootingGuide = () => {
         ))}
       </div>
 
-      {filteredData.length === 0 && (
+      {troubleshoots.length === 0 && (
         <div className="text-center py-8">
-          <Wrench className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <p className="text-muted-foreground">
-            Nenhum problema encontrado para a categoria selecionada.
+            Nenhum guia de troubleshooting encontrado
           </p>
         </div>
       )}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, FileText, Download } from 'lucide-react';
+import { Plus, Trash2, FileText, Download, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -106,10 +106,10 @@ const NotesManager = () => {
         <div>
           <h1 className="text-3xl font-bold text-primary flex items-center">
             <FileText className="h-8 w-8 mr-3" />
-            Notas Técnicas
+            Chamados Tratados
           </h1>
           <p className="text-muted-foreground mt-1">
-            Anotações por cliente e parceiro
+            Registro de chamados e soluções por cliente
           </p>
         </div>
         
