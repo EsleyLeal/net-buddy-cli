@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { AlertTriangle, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronUp, Plus, Trash2, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -57,6 +57,7 @@ const TroubleshootingGuide = () => {
   const [troubleshoots, setTroubleshoots] = useState<TroubleshootingItem[]>([]);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [showForm, setShowForm] = useState(false);
+  const [editingItem, setEditingItem] = useState<TroubleshootingItem | null>(null);
   const [formData, setFormData] = useState({
     titulo: '',
     descricao: '',
@@ -74,38 +75,67 @@ const TroubleshootingGuide = () => {
     setTroubleshoots([...defaultTroubleshoot, ...customData]);
   };
 
+  const saveTroubleshoots = (customItems: TroubleshootingItem[]) => {
+    localStorage.setItem('noc-troubleshoots', JSON.stringify(customItems));
+  };
+
   const addTroubleshoot = () => {
-    if (!formData.titulo || !formData.descricao || !formData.passos) {
+    if (editingItem) {
+      // Atualizar item existente
+      const updatedItems = troubleshoots.map(item => 
+        item.id === editingItem.id ? {
+          ...item,
+          titulo: formData.titulo,
+          descricao: formData.descricao,
+          passos: formData.passos.split('\n').filter(p => p.trim()),
+        } : item
+      );
+      setTroubleshoots(updatedItems);
+      
+      // Salvar apenas os customizados
+      const customOnly = updatedItems.filter(item => item.isCustom);
+      saveTroubleshoots(customOnly);
+      
+      setEditingItem(null);
       toast({
-        title: "Erro",
-        description: "Todos os campos são obrigatórios",
-        variant: "destructive",
+        title: "Troubleshooting atualizado",
+        description: `${formData.titulo} foi atualizado`,
       });
-      return;
+    } else {
+      // Adicionar novo item
+      const newTroubleshoot: TroubleshootingItem = {
+        id: Date.now().toString(),
+        titulo: formData.titulo,
+        descricao: formData.descricao,
+        passos: formData.passos.split('\n').filter(step => step.trim()),
+        isCustom: true
+      };
+
+      const customTroubleshoots = localStorage.getItem('noc-troubleshoots');
+      const currentCustom = customTroubleshoots ? JSON.parse(customTroubleshoots) : [];
+      const newCustom = [...currentCustom, newTroubleshoot];
+      
+      saveTroubleshoots(newCustom);
+      setTroubleshoots([...troubleshoots, newTroubleshoot]);
+
+      toast({
+        title: "Troubleshooting adicionado",
+        description: formData.titulo || 'Novo troubleshoot',
+      });
     }
-
-    const newTroubleshoot: TroubleshootingItem = {
-      id: Date.now().toString(),
-      titulo: formData.titulo,
-      descricao: formData.descricao,
-      passos: formData.passos.split('\n').filter(step => step.trim()),
-      isCustom: true
-    };
-
-    const customTroubleshoots = localStorage.getItem('noc-troubleshoots');
-    const currentCustom = customTroubleshoots ? JSON.parse(customTroubleshoots) : [];
-    const newCustom = [...currentCustom, newTroubleshoot];
-    
-    localStorage.setItem('noc-troubleshoots', JSON.stringify(newCustom));
-    setTroubleshoots([...troubleshoots, newTroubleshoot]);
 
     setFormData({ titulo: '', descricao: '', passos: '' });
     setShowForm(false);
+  };
 
-    toast({
-      title: "Troubleshooting adicionado",
-      description: formData.titulo,
+  const editTroubleshoot = (item: TroubleshootingItem) => {
+    setFormData({
+      titulo: item.titulo,
+      descricao: item.descricao,
+      passos: item.passos.join('\n'),
     });
+    setEditingItem(item);
+    setShowForm(true);
   };
 
   const deleteTroubleshoot = (id: string) => {
@@ -122,7 +152,7 @@ const TroubleshootingGuide = () => {
     const updatedTroubleshoots = troubleshoots.filter(item => item.id !== id);
     const customOnly = updatedTroubleshoots.filter(item => item.isCustom);
     
-    localStorage.setItem('noc-troubleshoots', JSON.stringify(customOnly));
+    saveTroubleshoots(customOnly);
     setTroubleshoots(updatedTroubleshoots);
 
     toast({
@@ -163,11 +193,13 @@ const TroubleshootingGuide = () => {
       {/* Form */}
       {showForm && (
         <div className="terminal-card p-6">
-          <h3 className="text-lg font-semibold text-primary mb-4">Adicionar Troubleshooting</h3>
+          <h3 className="text-lg font-semibold text-primary mb-4">
+            {editingItem ? 'Editar Troubleshooting' : 'Novo Troubleshooting'}
+          </h3>
           
           <div className="space-y-4">
             <div>
-              <Label htmlFor="titulo">Título do Problema *</Label>
+              <Label htmlFor="titulo">Título do Problema</Label>
               <Input
                 id="titulo"
                 value={formData.titulo}
@@ -178,7 +210,7 @@ const TroubleshootingGuide = () => {
             </div>
             
             <div>
-              <Label htmlFor="descricao">Descrição *</Label>
+              <Label htmlFor="descricao">Descrição</Label>
               <Input
                 id="descricao"
                 value={formData.descricao}
@@ -189,7 +221,7 @@ const TroubleshootingGuide = () => {
             </div>
 
             <div>
-              <Label htmlFor="passos">Passos de Solução *</Label>
+              <Label htmlFor="passos">Passos de Solução</Label>
               <Textarea
                 id="passos"
                 value={formData.passos}
@@ -205,11 +237,15 @@ const TroubleshootingGuide = () => {
           </div>
           
           <div className="flex justify-end space-x-2 mt-6">
-            <Button variant="outline" onClick={() => setShowForm(false)}>
+            <Button variant="outline" onClick={() => {
+              setShowForm(false);
+              setEditingItem(null);
+              setFormData({ titulo: '', descricao: '', passos: '' });
+            }}>
               Cancelar
             </Button>
             <Button onClick={addTroubleshoot} className="terminal-button">
-              Adicionar
+              {editingItem ? 'Atualizar' : 'Adicionar'}
             </Button>
           </div>
         </div>
@@ -261,17 +297,30 @@ const TroubleshootingGuide = () => {
               
               <div className="flex items-center space-x-2">
                 {item.isCustom && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteTroubleshoot(item.id);
-                    }}
-                    className="p-1 h-auto text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        editTroubleshoot(item);
+                      }}
+                      className="p-1 h-auto text-muted-foreground hover:text-primary"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteTroubleshoot(item.id);
+                      }}
+                      className="p-1 h-auto text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
                 )}
                 {expandedItems.has(item.id) ? (
                   <ChevronUp className="h-5 w-5 text-muted-foreground" />

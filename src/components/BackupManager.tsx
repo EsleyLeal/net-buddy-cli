@@ -152,7 +152,7 @@ const BackupManager = () => {
       <div className="terminal-card p-6">
         <h3 className="text-lg font-semibold text-primary mb-4">Ações de Backup</h3>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Button 
             onClick={exportAllData}
             className="terminal-button h-auto p-4 flex flex-col items-center space-y-2"
@@ -180,15 +180,6 @@ const BackupManager = () => {
             </Button>
           </div>
 
-          <Button 
-            onClick={clearAllData}
-            variant="destructive"
-            className="h-auto p-4 flex flex-col items-center space-y-2"
-          >
-            <RotateCcw className="h-6 w-6" />
-            <span>Limpar Dados</span>
-            <span className="text-xs opacity-70">Remover tudo</span>
-          </Button>
         </div>
       </div>
 

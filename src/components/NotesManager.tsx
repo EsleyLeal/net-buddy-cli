@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, FileText, Download, Upload } from 'lucide-react';
+import { Plus, Trash2, FileText, Download, Upload, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,6 +16,7 @@ interface Note {
 const NotesManager = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [formData, setFormData] = useState({
     cliente: '',
     conteudo: '',
@@ -40,32 +41,45 @@ const NotesManager = () => {
   };
 
   const addNote = () => {
-    if (!formData.cliente || !formData.conteudo) {
+
+    if (editingNote) {
+      const updatedNotes = notes.map(note => 
+        note.id === editingNote.id ? { ...note, ...formData } : note
+      );
+      saveNotes(updatedNotes);
+      setEditingNote(null);
       toast({
-        title: "Erro",
-        description: "Cliente e conteúdo são obrigatórios",
-        variant: "destructive",
+        title: "Chamado atualizado",
+        description: `Chamado foi atualizado com sucesso`,
       });
-      return;
+    } else {
+      const newNote: Note = {
+        id: Date.now().toString(),
+        cliente: formData.cliente,
+        conteudo: formData.conteudo,
+        dataRegistro: new Date().toISOString(),
+      };
+
+      const updatedNotes = [newNote, ...notes];
+      saveNotes(updatedNotes);
+
+      toast({
+        title: "Chamado adicionado",
+        description: `Chamado para ${formData.cliente || 'cliente'}`,
+      });
     }
-
-    const newNote: Note = {
-      id: Date.now().toString(),
-      cliente: formData.cliente,
-      conteudo: formData.conteudo,
-      dataRegistro: new Date().toISOString(),
-    };
-
-    const updatedNotes = [newNote, ...notes];
-    saveNotes(updatedNotes);
 
     setFormData({ cliente: '', conteudo: '' });
     setShowForm(false);
+  };
 
-    toast({
-      title: "Nota adicionada",
-      description: `Nota para ${formData.cliente}`,
+  const editNote = (note: Note) => {
+    setFormData({
+      cliente: note.cliente,
+      conteudo: note.conteudo,
     });
+    setEditingNote(note);
+    setShowForm(true);
   };
 
   const deleteNote = (id: string) => {
@@ -120,7 +134,7 @@ const NotesManager = () => {
           </Button>
           <Button onClick={() => setShowForm(!showForm)} className="terminal-button">
             <Plus className="h-4 w-4 mr-2" />
-            Nova Nota
+            Novo Chamado
           </Button>
         </div>
       </div>
@@ -159,11 +173,13 @@ const NotesManager = () => {
       {/* Form */}
       {showForm && (
         <div className="terminal-card p-6">
-          <h3 className="text-lg font-semibold text-primary mb-4">Nova Nota</h3>
+          <h3 className="text-lg font-semibold text-primary mb-4">
+            {editingNote ? 'Editar Chamado' : 'Novo Chamado'}
+          </h3>
           
           <div className="space-y-4">
             <div>
-              <Label htmlFor="cliente">Cliente/Parceiro *</Label>
+              <Label htmlFor="cliente">Cliente/Parceiro</Label>
               <Input
                 id="cliente"
                 value={formData.cliente}
@@ -174,7 +190,7 @@ const NotesManager = () => {
             </div>
             
             <div>
-              <Label htmlFor="conteudo">Conteúdo da Nota *</Label>
+              <Label htmlFor="conteudo">Conteúdo do Chamado</Label>
               <Textarea
                 id="conteudo"
                 value={formData.conteudo}
@@ -187,11 +203,15 @@ const NotesManager = () => {
           </div>
           
           <div className="flex justify-end space-x-2 mt-6">
-            <Button variant="outline" onClick={() => setShowForm(false)}>
+            <Button variant="outline" onClick={() => {
+              setShowForm(false);
+              setEditingNote(null);
+              setFormData({ cliente: '', conteudo: '' });
+            }}>
               Cancelar
             </Button>
             <Button onClick={addNote} className="terminal-button">
-              Salvar Nota
+              {editingNote ? 'Atualizar' : 'Salvar Chamado'}
             </Button>
           </div>
         </div>
@@ -210,14 +230,24 @@ const NotesManager = () => {
                   {new Date(note.dataRegistro).toLocaleString()}
                 </p>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => deleteNote(note.id)}
-                className="p-1 h-auto text-destructive hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <div className="flex space-x-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => editNote(note)}
+                  className="p-1 h-auto text-muted-foreground hover:text-primary"
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => deleteNote(note.id)}
+                  className="p-1 h-auto text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             <div className="bg-muted/20 rounded p-3 border-l-4 border-primary">

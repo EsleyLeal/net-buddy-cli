@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Copy, Star, StarOff, Plus } from 'lucide-react';
+import { Search, Copy, Star, StarOff, Plus, Edit, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import Fuse from 'fuse.js';
 
 interface Command {
+  id?: string;
   comando: string;
   dispositivo: string;
   protocolo: string;
@@ -24,6 +25,7 @@ const CommandSearch = () => {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingCommand, setEditingCommand] = useState<Command | null>(null);
   const [formData, setFormData] = useState({
     comando: '',
     dispositivo: '',
@@ -59,11 +61,17 @@ const CommandSearch = () => {
       const response = await fetch('/comandos.json');
       const jsonData = await response.json();
       
+      // Adicionar IDs aos comandos do JSON se não tiverem
+      const jsonWithIds = jsonData.map((cmd: Command, index: number) => ({
+        ...cmd,
+        id: cmd.id || `json-${index}`
+      }));
+      
       // Carregar comandos customizados do localStorage
       const customCommands = localStorage.getItem('noc-custom-commands');
       const customData = customCommands ? JSON.parse(customCommands) : [];
       
-      const allCommands = [...jsonData, ...customData];
+      const allCommands = [...jsonWithIds, ...customData];
       setCommands(allCommands);
       setFilteredCommands(allCommands);
     } catch (error) {
@@ -75,6 +83,10 @@ const CommandSearch = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const saveCustomCommands = (customCommands: Command[]) => {
+    localStorage.setItem('noc-custom-commands', JSON.stringify(customCommands));
   };
 
   const loadFavorites = () => {
@@ -116,24 +128,44 @@ const CommandSearch = () => {
   };
 
   const addCommand = () => {
-    if (!formData.comando || !formData.dispositivo || !formData.protocolo || !formData.tarefa || !formData.descricao) {
+    if (editingCommand) {
+      // Atualizar comando existente
+      const updatedCommands = commands.map(cmd => 
+        cmd.id === editingCommand.id ? { ...editingCommand, ...formData } : cmd
+      );
+      setCommands(updatedCommands);
+      
+      // Atualizar apenas os comandos customizados no localStorage
+      const customCommands = updatedCommands.filter(cmd => !cmd.id?.startsWith('json-'));
+      saveCustomCommands(customCommands);
+      
+      setEditingCommand(null);
       toast({
-        title: "Erro",
-        description: "Todos os campos são obrigatórios",
-        variant: "destructive",
+        title: "Comando atualizado",
+        description: `${formData.comando} foi atualizado com sucesso`,
       });
-      return;
-    }
+    } else {
+      // Adicionar novo comando
+      const newCommand: Command = {
+        id: Date.now().toString(),
+        ...formData,
+      };
 
-    const customCommands = localStorage.getItem('noc-custom-commands');
-    const currentCustom = customCommands ? JSON.parse(customCommands) : [];
-    const newCustom = [...currentCustom, formData];
-    
-    localStorage.setItem('noc-custom-commands', JSON.stringify(newCustom));
-    
-    const allCommands = [...commands, formData];
-    setCommands(allCommands);
-    setFilteredCommands(allCommands);
+      const customCommands = localStorage.getItem('noc-custom-commands');
+      const currentCustom = customCommands ? JSON.parse(customCommands) : [];
+      const newCustom = [...currentCustom, newCommand];
+      
+      saveCustomCommands(newCustom);
+      
+      const allCommands = [...commands, newCommand];
+      setCommands(allCommands);
+      setFilteredCommands(allCommands);
+
+      toast({
+        title: "Comando adicionado",
+        description: `${formData.comando} foi adicionado com sucesso`,
+      });
+    }
     
     setFormData({
       comando: '',
@@ -143,10 +175,41 @@ const CommandSearch = () => {
       descricao: ''
     });
     setShowForm(false);
+  };
 
+  const editCommand = (command: Command) => {
+    setFormData({
+      comando: command.comando,
+      dispositivo: command.dispositivo,
+      protocolo: command.protocolo,
+      tarefa: command.tarefa,
+      descricao: command.descricao,
+    });
+    setEditingCommand(command);
+    setShowForm(true);
+  };
+
+  const deleteCommand = (commandToDelete: Command) => {
+    // Só permite deletar comandos customizados
+    if (commandToDelete.id?.startsWith('json-')) {
+      toast({
+        title: "Erro",
+        description: "Não é possível excluir comandos padrão",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const updatedCommands = commands.filter(cmd => cmd.id !== commandToDelete.id);
+    setCommands(updatedCommands);
+    
+    // Atualizar localStorage apenas com comandos customizados
+    const customCommands = updatedCommands.filter(cmd => !cmd.id?.startsWith('json-'));
+    saveCustomCommands(customCommands);
+    
     toast({
-      title: "Comando adicionado",
-      description: `${formData.comando} foi adicionado com sucesso`,
+      title: "Comando removido",
+      description: "Comando excluído com sucesso",
     });
   };
 
@@ -177,11 +240,13 @@ const CommandSearch = () => {
       {/* Form */}
       {showForm && (
         <div className="terminal-card p-6">
-          <h3 className="text-lg font-semibold text-primary mb-4">Adicionar Comando</h3>
+          <h3 className="text-lg font-semibold text-primary mb-4">
+            {editingCommand ? 'Editar Comando' : 'Adicionar Comando'}
+          </h3>
           
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="comando">Comando *</Label>
+              <Label htmlFor="comando">Comando</Label>
               <Input
                 id="comando"
                 value={formData.comando}
@@ -192,8 +257,11 @@ const CommandSearch = () => {
             </div>
             
             <div>
-              <Label htmlFor="dispositivo">Dispositivo *</Label>
-              <Select onValueChange={(value) => setFormData({...formData, dispositivo: value})}>
+              <Label htmlFor="dispositivo">Dispositivo</Label>
+              <Select 
+                value={formData.dispositivo}
+                onValueChange={(value) => setFormData({...formData, dispositivo: value})}
+              >
                 <SelectTrigger className="terminal-input">
                   <SelectValue placeholder="Selecione o dispositivo" />
                 </SelectTrigger>
@@ -207,7 +275,7 @@ const CommandSearch = () => {
             </div>
 
             <div>
-              <Label htmlFor="protocolo">Protocolo *</Label>
+              <Label htmlFor="protocolo">Protocolo</Label>
               <Input
                 id="protocolo"
                 value={formData.protocolo}
@@ -218,7 +286,7 @@ const CommandSearch = () => {
             </div>
 
             <div>
-              <Label htmlFor="tarefa">Tarefa *</Label>
+              <Label htmlFor="tarefa">Tarefa</Label>
               <Input
                 id="tarefa"
                 value={formData.tarefa}
@@ -229,7 +297,7 @@ const CommandSearch = () => {
             </div>
 
             <div className="col-span-2">
-              <Label htmlFor="descricao">Descrição *</Label>
+              <Label htmlFor="descricao">Descrição</Label>
               <Textarea
                 id="descricao"
                 value={formData.descricao}
@@ -242,11 +310,15 @@ const CommandSearch = () => {
           </div>
           
           <div className="flex justify-end space-x-2 mt-6">
-            <Button variant="outline" onClick={() => setShowForm(false)}>
+            <Button variant="outline" onClick={() => {
+              setShowForm(false);
+              setEditingCommand(null);
+              setFormData({ comando: '', dispositivo: '', protocolo: '', tarefa: '', descricao: '' });
+            }}>
               Cancelar
             </Button>
             <Button onClick={addCommand} className="terminal-button">
-              Adicionar Comando
+              {editingCommand ? 'Atualizar' : 'Adicionar Comando'}
             </Button>
           </div>
         </div>
@@ -274,23 +346,45 @@ const CommandSearch = () => {
       {/* Commands Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filteredCommands.map((command, index) => (
-          <div key={index} className="terminal-card p-4 hover:shadow-lg transition-shadow">
+          <div key={command.id || index} className="terminal-card p-4 hover:shadow-lg transition-shadow">
             <div className="flex items-start justify-between mb-3">
               <Badge className={getDeviceColor(command.dispositivo)}>
                 {command.dispositivo}
               </Badge>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleFavorite(command.comando)}
-                className="p-1 h-auto"
-              >
-                {favorites.includes(command.comando) ? (
-                  <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                ) : (
-                  <StarOff className="h-4 w-4 text-muted-foreground" />
+              <div className="flex space-x-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleFavorite(command.comando)}
+                  className="p-1 h-auto"
+                >
+                  {favorites.includes(command.comando) ? (
+                    <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                  ) : (
+                    <StarOff className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+                {!command.id?.startsWith('json-') && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => editCommand(command)}
+                      className="p-1 h-auto text-muted-foreground hover:text-primary"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteCommand(command)}
+                      className="p-1 h-auto text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
                 )}
-              </Button>
+              </div>
             </div>
 
             <div 
