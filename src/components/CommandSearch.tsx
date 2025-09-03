@@ -190,16 +190,6 @@ const CommandSearch = () => {
   };
 
   const deleteCommand = (commandToDelete: Command) => {
-    // Só permite deletar comandos customizados
-    if (commandToDelete.id?.startsWith('json-')) {
-      toast({
-        title: "Erro",
-        description: "Não é possível excluir comandos padrão",
-        variant: "destructive",
-      });
-      return;
-    }
-
     const updatedCommands = commands.filter(cmd => cmd.id !== commandToDelete.id);
     setCommands(updatedCommands);
     
@@ -364,26 +354,22 @@ const CommandSearch = () => {
                     <StarOff className="h-4 w-4 text-muted-foreground" />
                   )}
                 </Button>
-                {!command.id?.startsWith('json-') && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => editCommand(command)}
-                      className="p-1 h-auto text-muted-foreground hover:text-primary"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteCommand(command)}
-                      className="p-1 h-auto text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </>
-                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => editCommand(command)}
+                  className="p-1 h-auto text-muted-foreground hover:text-primary"
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => deleteCommand(command)}
+                  className="p-1 h-auto text-muted-foreground hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </div>
 
