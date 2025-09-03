@@ -8,10 +8,7 @@ const Layout = () => {
 
   const navigation = [
     { name: 'Comandos', href: '/', icon: Search },
-    { name: 'Circuitos', href: '/circuitos', icon: Network },
-    { name: 'Chamados Tratados', href: '/notas', icon: FileText },
     { name: 'Troubleshooting', href: '/troubleshooting', icon: Wrench },
-    { name: 'Backup', href: '/backup', icon: Database },
   ];
 
   return (
